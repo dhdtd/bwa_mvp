@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>BW Aasee · Nominierung</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main>
+    <h1>3 Spieler nominieren</h1>
+    <div id="login"><label for="pin">Trainer-PIN</label><input id="pin" type="password"
+        autocomplete="current-password"><button class="go" id="open">Spieler laden</button></div>
+    <div id="form" hidden>
+      <label for="label">Spieltag</label><input id="label" placeholder="Spieltag 7">
+      <label for="gegner">Gegner</label><input id="gegner">
+      <label for="opens">Abstimmung startet</label><input id="opens" type="datetime-local">
+      <label for="closes">Abstimmung endet</label><input id="closes" type="datetime-local">
+      <p class="sub" style="margin-top:18px">Wähle genau 3: <b id="cnt">0</b>/3</p>
+      <div id="list"></div>
+      <button class="go" id="save" disabled>Nominierung speichern</button>
+    </div>
+    <div id="out"></div>
+  </main>
+  <script>
+    const SB_URL = "https://stopplksxvgtrnniwvus.supabase.co", SB_KEY = "sb_publishable_ITgSUAtVPiE4B6yWS2e5FA_19qyB5Sy";
+    const rpc = async (fn, body) => {const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {method: "POST", headers: {apikey: SB_KEY, ...(SB_KEY.startsWith("eyJ") ? {Authorization: "Bearer " + SB_KEY} : {}), "Content-Type": "application/json"}, body: JSON.stringify(body)}); const j = await r.json(); if (!r.ok) throw new Error(j.message || "Fehler"); return j};
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+    const av = p => p.foto_url ? `<img class="av" src="${esc(p.foto_url)}" alt="">` : `<div class="av">${esc(p.name.split(" ").map(x => x[0]).join("").slice(0, 2))}</div>`;
+    const local = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+    const show = (t, err) => $("out").innerHTML = `<div class="msg ${err ? "err" : ""}">${t}</div>`;
+    // Standard: Di 08:00 bis Do 20:00 der kommenden Woche (nächster Dienstag, falls heute nach Di)
+    function defaults() {const d = new Date(); d.setHours(8, 0, 0, 0); let add = (2 - d.getDay() + 7) % 7; if (add === 0 && new Date() > d) add = 7; d.setDate(d.getDate() + add); const e = new Date(d); e.setDate(e.getDate() + 2); e.setHours(20, 0, 0, 0); $("opens").value = local(d); $("closes").value = local(e)}
+    const picked = new Set();
+    $("open").onclick = async () => {
+      try {
+        const ps = await rpc("trainer_players", {p_pin: $("pin").value});
+        $("login").hidden = true; $("form").hidden = false; defaults(); $("out").innerHTML = "";
+        $("list").innerHTML = ps.map(p => `<button class="cand" aria-pressed="false" data-id="${p.id}">${av(p)}<b>${esc(p.name)}</b></button>`).join("");
+        $("list").querySelectorAll(".cand").forEach(b => b.onclick = () => {
+          const id = b.dataset.id;
+          if (picked.has(id)) picked.delete(id); else if (picked.size < 3) picked.add(id);
+          b.setAttribute("aria-pressed", picked.has(id)); $("cnt").textContent = picked.size; $("save").disabled = picked.size !== 3 || !$("label").value;
+        });
+        $("label").oninput = () => $("save").disabled = picked.size !== 3 || !$("label").value;
+      } catch (e) {show(esc(e.message), 1)}
+    };
+    $("save").onclick = async () => {
+      $("save").disabled = true;
+      try {
+        await rpc("nominate", {p_pin: $("pin").value, p_label: $("label").value, p_gegner: $("gegner").value || null, p_opens: new Date($("opens").value).toISOString(), p_closes: new Date($("closes").value).toISOString(), p_players: [...picked]});
+        show("Nominierung gespeichert. Die Abstimmung startet zum eingestellten Zeitpunkt.");
+      } catch (e) {show(esc(e.message), 1); $("save").disabled = false}
+    };
+  </script>
+</body>
+
+</html>

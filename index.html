@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>BW Aasee · MVP des Spieltags</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main>
+    <h1>MVP des Spieltags</h1>
+    <p class="sub" id="sub">Lade …</p>
+    <div id="app"></div>
+  </main>
+  <script>
+    const SB_URL = "https://stopplksxvgtrnniwvus.supabase.co", SB_KEY = "sb_publishable_ITgSUAtVPiE4B6yWS2e5FA_19qyB5Sy";
+    const rpc = async (fn, body) => {const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {method: "POST", headers: {apikey: SB_KEY, ...(SB_KEY.startsWith("eyJ") ? {Authorization: "Bearer " + SB_KEY} : {}), "Content-Type": "application/json"}, body: JSON.stringify(body)}); if (!r.ok) throw new Error((await r.json()).message || "Fehler"); return r.json()};
+    const $ = id => document.getElementById(id), app = $("app");
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+    const fmt = d => new Date(d).toLocaleString("de-DE", {weekday: "long", hour: "2-digit", minute: "2-digit"});
+    const av = p => p.foto_url ? `<img class="av" src="${esc(p.foto_url)}" alt="">` : `<div class="av">${esc(p.name.split(" ").map(x => x[0]).join("").slice(0, 2))}</div>`;
+    let token = new URLSearchParams(location.search).get("t");
+    try {if (token) localStorage.setItem("mvp_t", token); else token = localStorage.getItem("mvp_t")} catch (e) { }
+    const msg = (t, err) => app.innerHTML = `<div class="msg ${err ? "err" : ""}">${t}</div>`;
+
+    async function load() {
+      if (!token) return msg("Dein persönlicher Link fehlt. Nutze den Link, den du vom Trainer bekommen hast.", 1);
+      const d = await rpc("get_current_round", {p_token: token});
+      if (d.error) return msg("Dieser Link ist ungültig. Frag den Trainer nach deinem Link.", 1);
+      $("sub").textContent = `Hi ${d.player}`;
+      if (d.state === "none") return msg("Noch keine Abstimmung angelegt.");
+      const r = d.round, title = `${r.label}${r.gegner ? " gegen " + esc(r.gegner) : ""}`;
+      if (d.state === "upcoming") return msg(`<b>${title}</b><br>Die Abstimmung startet ${fmt(r.opens_at)}.`);
+      if (d.state === "closed") {
+        const max = Math.max(1, ...d.results.map(x => x.votes));
+        app.innerHTML = `<p class="sub">${title}: Ergebnis</p>` + (d.results.length ? d.results.map((x, i) => `<div class="cand" style="cursor:default">${av(x)}<div style="flex:1"><b>${esc(x.name)}${i === 0 ? " 🏆" : ""}</b> · ${x.votes} Stimme${x.votes === 1 ? "" : "n"}<div class="bar" style="width:${x.votes / max * 100}%"></div></div></div>`).join("") : "Es wurden keine Stimmen abgegeben.");
+        return;
+      }
+      if (d.voted) {const w = d.nominees.find(n => n.id === d.voted); return msg(`Deine Stimme für <b>${esc(w?.name)}</b> ist gezählt. Das Ergebnis gibt es ab ${fmt(r.closes_at)}.`)}
+      let sel = null;
+      app.innerHTML = `<p class="sub">${title}: Wer war dein MVP? Abstimmung läuft bis ${fmt(r.closes_at)}.</p>` +
+        d.nominees.map(n => `<button class="cand" aria-pressed="false" data-id="${n.id}">${av(n)}<b>${esc(n.name)}</b></button>`).join("") +
+        `<button class="go" id="go" disabled>Stimme abgeben</button><div id="out"></div>`;
+      app.querySelectorAll(".cand").forEach(b => b.onclick = () => {sel = b.dataset.id; app.querySelectorAll(".cand").forEach(x => x.setAttribute("aria-pressed", x === b)); $("go").disabled = false});
+      $("go").onclick = async () => {
+        $("go").disabled = true;
+        try {
+          const res = await rpc("cast_vote", {p_token: token, p_round: r.id, p_player: sel});
+          const m = {ok: null, already_voted: "Du hast schon abgestimmt.", self_vote: "Für dich selbst kannst du nicht stimmen.", closed: "Die Abstimmung ist beendet.", not_nominated: "Dieser Spieler ist nicht nominiert."}[res];
+          if (m) {$("out").innerHTML = `<div class="msg err">${m}</div>`; if (res !== "self_vote") return load(); $("go").disabled = false} else load();
+        } catch (e) {$("out").innerHTML = `<div class="msg err">${esc(e.message)}. Versuch es nochmal.</div>`; $("go").disabled = false}
+      };
+    }
+    load().catch(e => msg(esc(e.message), 1));
+  </script>
+</body>
+
+</html>

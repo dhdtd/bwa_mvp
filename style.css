@@ -1,0 +1,148 @@
+:root {
+    --bg: #f3f7fc;
+    --ink: #0c1a2e;
+    --blue: #0b4ea2;
+    --card: #fff;
+    --accent: #0b4ea2;
+    --on-accent: #fff;
+    --line: #c9d6e8
+}
+
+@media(prefers-color-scheme:dark) {
+    :root {
+        --bg: #0a1424;
+        --ink: #eef3fb;
+        --blue: #5b9cf0;
+        --card: #13223a;
+        --accent: #5b9cf0;
+        --on-accent: #0a1424;
+        --line: #25395a
+    }
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 system-ui, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px 40px;
+    border-top: 8px solid var(--blue)
+}
+
+main {
+    max-width: 520px;
+    margin: 0 auto
+}
+
+h1 {
+    font: 800 clamp(2.4rem, 11vw, 3.6rem)/.95 "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+    margin: .4em 0 .2em;
+    text-transform: uppercase;
+    color: var(--blue)
+}
+
+p.sub {
+    margin: 0 0 20px;
+    opacity: .75
+}
+
+.cand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px;
+    margin: 0 0 10px;
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer
+}
+
+.cand[aria-pressed=true] {
+    border-color: var(--blue);
+    box-shadow: inset 6px 0 0 var(--blue)
+}
+
+.av {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: var(--on-accent);
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 1.3rem;
+    object-fit: cover;
+    flex: none
+}
+
+.cand b {
+    font-size: 1.15rem
+}
+
+button.go {
+    width: 100%;
+    padding: 14px;
+    margin-top: 6px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font: 800 1.05rem system-ui;
+    cursor: pointer
+}
+
+button.go:disabled {
+    opacity: .4;
+    cursor: not-allowed
+}
+
+.msg {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 2px solid var(--line);
+    margin: 14px 0
+}
+
+.msg.err {
+    border-color: #c0392b
+}
+
+.bar {
+    height: 8px;
+    background: var(--blue);
+    border-radius: 4px;
+    margin-top: 6px
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin: 14px 0 4px
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: inherit;
+    font: inherit
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 2px
+}
